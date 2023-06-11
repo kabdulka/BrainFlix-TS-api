@@ -6,7 +6,7 @@ const videoRoutes = require("./routes/videos")
 // import videosRoutes from "./routes/videos"
 require("dotenv").config();
 
-const PORT = process.env.PORT || 6000;
+const PORT = process.env.PORT || 7000;
 const CORS_ORIGIN = process.env.CORS_ORIGIN;
 
 
