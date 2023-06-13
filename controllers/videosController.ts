@@ -1,4 +1,6 @@
+import { timeStamp } from 'console';
 import express, {Application, Request, Response} from 'express';
+import { read, write, writev } from 'fs';
 const fs = require("fs"); // file system module, used to read/write data on the server
 const { v4: uuidv4 } = require("uuid"); // Unique ID Generator
 
@@ -8,7 +10,7 @@ const SERVER_URL = process.env.SERVER_URL;
 const app: Application = express();
 app.use(express.json())
 
-// Types
+//  ---------------------- Types ----------------------
 interface CommentType {
     id: string
     name: string
@@ -47,6 +49,7 @@ const readVideos = (): videoType[] => {
     return videosData;
 }
 
+// Method 2 for posting
 // const writeVideos = (data: videoType[]): void => {
 //     const jsonString = JSON.stringify(data)
 //     fs.writeFileSync("./data/videos2.json", jsonString, (err: Error) => {
@@ -58,10 +61,27 @@ const readVideos = (): videoType[] => {
 //     })
 // }
 
-function writeVideos(file: string, data: videoType[], callback: (err: Error) => express.Response<any, Record<string, any>> | undefined) {
-  // fs.writeFile takes 3 args, 1: the file to write, 2: data to write, 3: a callback function
-  fs.writeFileSync(file, JSON.stringify(data), callback);
+function writeVideos (data: videoType[]) {
+    // const 
+    fs.writeFile(
+        `./data/videos2.json`,
+        // TODO change to actual json file
+        JSON.stringify(data),
+        (err: Error) => {
+          if (err) {
+            console.log(err);
+            return;
+          } else {
+            console.log("file written successfully");
+          }
+        }
+      );
 }
+
+// function writeVideos(file: string, data: videoType[], callback: (err: Error) => express.Response<any, Record<string, any>> | undefined) {
+//   // fs.writeFile takes 3 args, 1: the file to write, 2: data to write, 3: a callback function
+//   fs.writeFileSync(file, JSON.stringify(data), callback);
+// }
 
 // get a condensed version of the videos
 const getVideos = (req: Request, res: Response): void => {
@@ -128,29 +148,127 @@ const postVideo = (req: Request, res: Response) => {
     videos.push(newVideo);
 
     // method 1:
-    // writeVideos(videos);
+    writeVideos(videos);
 
-        // method 2:
+    // method 2:
     // write back to the JSON file, save the new video
-      writeVideos(
-        "./data/videos2.json",
-        videos, // data to write to file
-        (err: Error) => {
-          if (err) {
-            return res.send("error writing file");
-          }
-          res.status(201).send("New video sucessfully posted");
-        }
-      );
+    //   writeVideos(
+    //     "./data/videos2.json",
+    //     videos, // data to write to file
+    //     (err: Error) => {
+    //       if (err) {
+    //         return res.send("error writing file");
+    //       }
+    //       res.status(201).send("New video sucessfully posted");
+    //     }
+    //   );
 
 
     res.status(201).send(videos)
 }
 
 
+const postComment = (req: Request, res: Response) => {
+
+    const body = req.body;
+    const videoId = req.params.id;
+
+    // comment wasn't provided from the client
+    if (!body.comment) {
+        res.status(404).send("Comment is required");
+        return;
+    }
+
+    // get all videos
+    const videos: videoType[] = readVideos();
+    // filter videos to obtain the one with the desired id from the params
+    const selectedVideo: videoType | undefined = videos.find((video: videoType) => video.id === videoId)
+
+    // create new comment to be posted
+    const newComment: CommentType = {
+        id: uuidv4(),
+        name: "Anonymous",
+        comment: body.comment,
+        likes: "0",
+        timestamp: Date.now()
+    }
+
+    // add a new comment to the selected video
+    selectedVideo?.comments.push(newComment)
+    console.log(selectedVideo?.comments)
+    // write/save changes
+    writeVideos(videos)
+
+    if (selectedVideo) {
+        res.status(201).send(selectedVideo)
+    } else {
+        res.status(404).send("cannot post video")
+    }
+
+}
+
+const likeVideo = ( req: Request, res: Response) => {
+    // const videoId = req.params.id;
+    const videoId = req.params.id;
+    const videos: videoType[] = readVideos();
+    
+    const selectedVideo: videoType | undefined = videos.find(video => video.id === videoId);
+    let videoLikesNum: number = Number(selectedVideo?.likes.replaceAll(",", ""));
+    console.log(selectedVideo?.likes);
+    console.log(typeof selectedVideo?.likes);
+    videoLikesNum++;
+    const videoLikesStr: string = videoLikesNum.toLocaleString();
+
+    if (selectedVideo != undefined) {
+        console.log("herere")
+        selectedVideo.likes = videoLikesStr
+        
+        writeVideos(videos)
+        res.status(201).send(selectedVideo);
+    } else {
+        res.status(404).send("Error in liking Video");
+        return;
+    }
+
+}
+
+const deleteComment = ( req: Request, res: Response) => {
+    const videoId = req.params.videoId;
+    const commentId = req.params.commentId;
+
+    const videos: videoType[] = readVideos();
+
+    const selectedVideo: videoType | undefined = videos.find( video => videoId === video.id);
+    
+    const allowedComments: CommentType[] | undefined = selectedVideo?.comments.filter( (comment) =>
+    comment.id !== commentId
+    );
+    
+    
+    if (selectedVideo != undefined && allowedComments != undefined) {
+        selectedVideo.comments = allowedComments;
+        writeVideos(videos)
+        res.status(201).send("Comment deleted")
+        
+    } else {
+        res.status(404).send("Video/comment not found")
+
+    }
+
+    
+}
+
+
+
+
+
+
 module.exports = {
     getVideos,
     getSingleVideo,
-    postVideo
+    postVideo,
+    postComment,
+    likeVideo,
+    deleteComment
 }
 
