@@ -59,7 +59,7 @@ interface strippedVideoType {
 
 // read data from JSON a files
 const readVideos = (): videoType[] => {
-    const videosFile = fs.readFileSync("./data/videos2.json")
+    const videosFile = fs.readFileSync("./data/videos.json")
     const videosData: videoType[] = JSON.parse(videosFile)
     return videosData;
 }
@@ -77,10 +77,9 @@ const readVideos = (): videoType[] => {
 // }
 
 function writeVideos (data: videoType[]) {
-    // const 
+
     fs.writeFile(
-        `./data/videos2.json`,
-        // TODO chae to actual json file
+        `./data/videos.json`,
         JSON.stringify(data),
         (err: Error) => {
           if (err) {
@@ -102,8 +101,7 @@ function writeVideos (data: videoType[]) {
 const getVideos = (req: Request, res: Response): void => {
     const videoData: videoType[] = readVideos();
 
-     const strippedVidData: strippedVideoType[] = videoData.map((video: videoType) => 
-    {
+     const strippedVidData: strippedVideoType[] = videoData.map((video: videoType) => {
         return {
             id: video.id,
             title: video.title,
@@ -111,6 +109,10 @@ const getVideos = (req: Request, res: Response): void => {
             image: video.image
         }
     })
+
+    if (!strippedVidData) {
+        res.status(500).send("Couldn't retrieve videos")
+    }
     res.status(200).json(strippedVidData);
 }
 
@@ -121,13 +123,17 @@ const getSingleVideo = (req: Request, res: Response) => {
     // retrieve all videos
     const videos: videoType[] = readVideos();
 
+    if (!videoId) {
+        return res.status(400).send("video ID not provided")
+    }
+    
     // find video using the retrieved id
-    const videoFound: videoType | undefined = videos.find((video) => video.id === videoId)
+    const videoFound: videoType | undefined = videos.find((video) => video.id === videoId);
 
     if (videoFound) {
         res.status(200).json(videoFound)
     } else {
-        res.status(404).send("Video not found")
+        res.status(500).send("Video not found")
     }
 }
 
@@ -173,7 +179,6 @@ const postVideo = (req: Request, res: Response) => {
     //     }
     //   );
 
-
     res.status(201).send(videos)
 }
 
@@ -204,13 +209,13 @@ const postComment = (req: Request, res: Response) => {
 
     // add a new comment to the selected video
     selectedVideo?.comments.push(newComment)
-    // write/save changes
-    writeVideos(videos)
-
+    
     if (selectedVideo) {
+        // write/save changes
+        writeVideos(videos)
         res.status(201).send(selectedVideo)
     } else {
-        res.status(404).send("cannot post video")
+        res.status(500).send("cannot post video")
     }
 
 }
