@@ -1,14 +1,29 @@
-import { timeStamp } from 'console';
 import express, {Application, Request, Response} from 'express';
-import { read, write, writev } from 'fs';
 const fs = require("fs"); // file system module, used to read/write data on the server
 const { v4: uuidv4 } = require("uuid"); // Unique ID Generator
-
 require("dotenv").config(); // load variables from .env file
-const PORT = process.env.PORT || 6000; // Set server port from .env file
+// const multer = require('multer')
+import multer from 'multer';
+
+const PORT = process.env.PORT; // Set server port from .env file
 const SERVER_URL = process.env.SERVER_URL;
 const app: Application = express();
+
 app.use(express.json())
+
+// configure Multer
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, 'public/images/');
+    },
+    filename: function (req, file, cb) {
+      const uniqueSuffix = `${Date.now()}-${uuidv4()}`;
+      cb(null, `${uniqueSuffix}-${file.originalname}`);
+    },
+    // limits: { fieldSize: 10 * 1024 * 1024 },
+  });
+
+const upload = multer({ storage: storage }).single('file');
 
 //  ---------------------- Types ----------------------
 interface CommentType {
@@ -65,7 +80,7 @@ function writeVideos (data: videoType[]) {
     // const 
     fs.writeFile(
         `./data/videos2.json`,
-        // TODO change to actual json file
+        // TODO chae to actual json file
         JSON.stringify(data),
         (err: Error) => {
           if (err) {
@@ -85,7 +100,6 @@ function writeVideos (data: videoType[]) {
 
 // get a condensed version of the videos
 const getVideos = (req: Request, res: Response): void => {
-    // console.log(typeof res.send(["string"]))
     const videoData: videoType[] = readVideos();
 
      const strippedVidData: strippedVideoType[] = videoData.map((video: videoType) => 
@@ -97,7 +111,6 @@ const getVideos = (req: Request, res: Response): void => {
             image: video.image
         }
     })
-    // console.log(strippedVidData)
     res.status(200).json(strippedVidData);
 }
 
@@ -120,12 +133,11 @@ const getSingleVideo = (req: Request, res: Response) => {
 
 const postVideo = (req: Request, res: Response) => {
     const body = req.body
-    const videos: videoType[] = readVideos()
-    // console.log(body)
-
+    const videos: videoType[] = readVideos();
+   
     // require both inputs from the client
-    if (body.title === "" || body.description === "") {
-        res.status(404).send("title and/or description are not provided")
+    if (body.title === "" || body.description === "" || !req.file) {
+        res.status(404).send("title and/or image and/or description are not provided")
         return;
     }
 
@@ -135,10 +147,8 @@ const postVideo = (req: Request, res: Response) => {
         channel: "channel1",
         description: body.description,
         timestamp: Date.now(),
-        image: "http://localhost:9000/images/Upload-video-preview.jpg",
-        comments: [
-          
-        ],
+        image: `http://localhost:5500/images/${req.file.filename}`,
+        comments: [],
         video: "https://project-2-api.herokuapp.com/stream",
         likes: "1",
         views: "1",
@@ -167,7 +177,6 @@ const postVideo = (req: Request, res: Response) => {
     res.status(201).send(videos)
 }
 
-
 const postComment = (req: Request, res: Response) => {
 
     const body = req.body;
@@ -195,7 +204,6 @@ const postComment = (req: Request, res: Response) => {
 
     // add a new comment to the selected video
     selectedVideo?.comments.push(newComment)
-    console.log(selectedVideo?.comments)
     // write/save changes
     writeVideos(videos)
 
@@ -208,19 +216,16 @@ const postComment = (req: Request, res: Response) => {
 }
 
 const likeVideo = ( req: Request, res: Response) => {
-    // const videoId = req.params.id;
     const videoId = req.params.id;
     const videos: videoType[] = readVideos();
     
     const selectedVideo: videoType | undefined = videos.find(video => video.id === videoId);
     let videoLikesNum: number = Number(selectedVideo?.likes.replaceAll(",", ""));
-    console.log(selectedVideo?.likes);
-    console.log(typeof selectedVideo?.likes);
     videoLikesNum++;
     const videoLikesStr: string = videoLikesNum.toLocaleString();
 
     if (selectedVideo != undefined) {
-        console.log("herere")
+
         selectedVideo.likes = videoLikesStr
         
         writeVideos(videos)
@@ -254,14 +259,8 @@ const deleteComment = ( req: Request, res: Response) => {
         res.status(404).send("Video/comment not found")
 
     }
-
     
 }
-
-
-
-
-
 
 module.exports = {
     getVideos,
@@ -269,6 +268,7 @@ module.exports = {
     postVideo,
     postComment,
     likeVideo,
-    deleteComment
+    deleteComment,
+    upload
 }
 

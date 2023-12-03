@@ -1,13 +1,11 @@
 import express from 'express';
-// import {getVideos} from "../controllers/videosController";
+// import { upload } from '../controllers/videosController';
 
 const videosController = require("../controllers/videosController");
 
-const {getVideos, getSingleVideo, postVideo, postComment, likeVideo, deleteComment } = videosController;
+const {getVideos, getSingleVideo, postVideo, postComment, likeVideo, deleteComment, upload } = videosController;
 
 const router = express.Router();
-
-// const fs = require("fs");
 
 /*
  * GET collection of Videos
@@ -17,7 +15,7 @@ router.get("/", getVideos);
 /*
  * POST a video
  */
-router.post("/", postVideo);
+router.post("/", upload, postVideo);
 
 /*
  * GET all details for a single video
