@@ -1,5 +1,4 @@
 import express from 'express';
-// import { upload } from '../controllers/videosController';
 
 const videosController = require("../controllers/videosController");
 

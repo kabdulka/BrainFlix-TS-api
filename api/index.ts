@@ -1,7 +1,8 @@
 import express, {Application, Request, Response} from 'express';
 const cors = require("cors");
 const app: Application = express();
-const videoRoutes = require("./routes/videos")
+const videoRoutes = require("../routes/videos")
+// import videoRoutes from "../routes/videos"
 require("dotenv").config();
 const PORT = process.env.PORT;
 const CORS_ORIGIN = process.env.CORS_ORIGIN;
